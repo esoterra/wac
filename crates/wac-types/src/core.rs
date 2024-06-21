@@ -27,9 +27,12 @@ pub enum CoreExtern {
         /// The table's element type.
         element_type: CoreRefType,
         /// Initial size of this table, in elements.
-        initial: u32,
+        initial: u64,
         /// Optional maximum size of the table, in elements.
-        maximum: Option<u32>,
+        maximum: Option<u64>,
+
+        /// TODO
+        table64: bool
     },
     /// The item is a memory.
     #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -59,6 +62,9 @@ pub enum CoreExtern {
         /// be at most `u32::MAX` for valid types. This field is always present for
         /// valid wasm memories when `shared` is `true`.
         maximum: Option<u64>,
+
+        /// TODO
+        page_size_log2: Option<u32>
     },
     /// The item is a global.
     #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -67,6 +73,9 @@ pub enum CoreExtern {
         val_type: CoreType,
         /// Whether or not the global is mutable.
         mutable: bool,
+
+        /// TODO
+        shared: bool,
     },
     /// The item is a tag.
     Tag(CoreFuncType),
@@ -90,6 +99,7 @@ impl From<wasmparser::TableType> for CoreExtern {
             element_type: ty.element_type.into(),
             initial: ty.initial,
             maximum: ty.maximum,
+            table64: ty.table64,
         }
     }
 }
@@ -101,6 +111,7 @@ impl From<wasmparser::MemoryType> for CoreExtern {
             shared: ty.shared,
             initial: ty.initial,
             maximum: ty.maximum,
+            page_size_log2: ty.page_size_log2,
         }
     }
 }
@@ -110,6 +121,7 @@ impl From<wasmparser::GlobalType> for CoreExtern {
         Self::Global {
             val_type: ty.content_type.into(),
             mutable: ty.mutable,
+            shared: ty.shared,
         }
     }
 }
@@ -185,31 +197,43 @@ pub struct CoreRefType {
 
 impl fmt::Display for CoreRefType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match (self.nullable, self.heap_type) {
-            (true, HeapType::Func) => "funcref",
-            (true, HeapType::Extern) => "externref",
-            (true, HeapType::Concrete(i)) => return write!(f, "(ref null {i})"),
-            (true, HeapType::Any) => "anyref",
-            (true, HeapType::None) => "nullref",
-            (true, HeapType::NoExtern) => "nullexternref",
-            (true, HeapType::NoFunc) => "nullfuncref",
-            (true, HeapType::Eq) => "eqref",
-            (true, HeapType::Struct) => "structref",
-            (true, HeapType::Array) => "arrayref",
-            (true, HeapType::I31) => "i31ref",
-            (true, HeapType::Exn) => "exnref",
-            (false, HeapType::Func) => "(ref func)",
-            (false, HeapType::Extern) => "(ref extern)",
-            (false, HeapType::Concrete(i)) => return write!(f, "(ref {i})"),
-            (false, HeapType::Any) => "(ref any)",
-            (false, HeapType::None) => "(ref none)",
-            (false, HeapType::NoExtern) => "(ref noextern)",
-            (false, HeapType::NoFunc) => "(ref nofunc)",
-            (false, HeapType::Eq) => "(ref eq)",
-            (false, HeapType::Struct) => "(ref struct)",
-            (false, HeapType::Array) => "(ref array)",
-            (false, HeapType::I31) => "(ref i31)",
-            (false, HeapType::Exn) => "(ref exn)",
+        let (shared, ty) = match self.heap_type {
+            HeapType::Abstract { shared, ty } => (shared, ty),
+            HeapType::Concrete(i) => {
+                match self.nullable {
+                    true => return write!(f, "(ref null {i})"),
+                    false => return write!(f, "(ref {i})"),
+                }
+            },
+        };
+
+        assert_eq!(shared, false); // TODO: display for shared
+
+        let s = match (self.nullable, ty) {
+            (true, AbstractHeapType::Func) => "funcref",
+            (true, AbstractHeapType::Extern) => "externref",
+            (true, AbstractHeapType::Any) => "anyref",
+            (true, AbstractHeapType::None) => "nullref",
+            (true, AbstractHeapType::NoExtern) => "nullexternref",
+            (true, AbstractHeapType::NoFunc) => "nullfuncref",
+            (true, AbstractHeapType::Eq) => "eqref",
+            (true, AbstractHeapType::Struct) => "structref",
+            (true, AbstractHeapType::Array) => "arrayref",
+            (true, AbstractHeapType::I31) => "i31ref",
+            (true, AbstractHeapType::Exn) => "exnref",
+            (true, AbstractHeapType::NoExn) => todo!(),
+            (false, AbstractHeapType::Func) => "(ref func)",
+            (false, AbstractHeapType::Extern) => "(ref extern)",
+            (false, AbstractHeapType::Any) => "(ref any)",
+            (false, AbstractHeapType::None) => "(ref none)",
+            (false, AbstractHeapType::NoExtern) => "(ref noextern)",
+            (false, AbstractHeapType::NoFunc) => "(ref nofunc)",
+            (false, AbstractHeapType::Eq) => "(ref eq)",
+            (false, AbstractHeapType::Struct) => "(ref struct)",
+            (false, AbstractHeapType::Array) => "(ref array)",
+            (false, AbstractHeapType::I31) => "(ref i31)",
+            (false, AbstractHeapType::Exn) => "(ref exn)",
+            (false, AbstractHeapType::NoExn) => todo!(),
         };
 
         f.write_str(s)
@@ -239,48 +263,82 @@ impl From<CoreRefType> for wasm_encoder::RefType {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum HeapType {
-    /// User defined type at the given index.
+    /// An abstract heap type; e.g., `anyref`.
+    Abstract {
+        /// Whether the type is shared.
+        shared: bool,
+        /// The actual heap type.
+        ty: AbstractHeapType,
+    },
+
+    /// A concrete Wasm-defined type at the given index.
     Concrete(u32),
+}
+
+/// An abstract heap type.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub enum AbstractHeapType {
     /// Untyped (any) function.
     Func,
-    /// External heap type.
+
+    /// The abstract external heap type.
     Extern,
-    /// The `any` heap type.
-    Any,
-    /// The `none` heap type.
-    None,
-    /// The `noextern` heap type.
-    NoExtern,
-    /// The `nofunc` heap type.
-    NoFunc,
-    /// The `eq` heap type.
-    Eq,
-    /// The `struct` heap type. The common supertype of all struct types.
-    Struct,
-    /// The `array` heap type. The common supertype of all array types.
-    Array,
-    /// The i31 heap type.
-    I31,
-    /// The abstraction `exception` heap type.
+
+    /// The abstract `any` heap type.
     ///
-    /// Introduced in the exception-handling proposal.
+    /// The common supertype (a.k.a. top) of all internal types.
+    Any,
+
+    /// The abstract `none` heap type.
+    ///
+    /// The common subtype (a.k.a. bottom) of all internal types.
+    None,
+
+    /// The abstract `noextern` heap type.
+    ///
+    /// The common subtype (a.k.a. bottom) of all external types.
+    NoExtern,
+
+    /// The abstract `nofunc` heap type.
+    ///
+    /// The common subtype (a.k.a. bottom) of all function types.
+    NoFunc,
+
+    /// The abstract `eq` heap type.
+    ///
+    /// The common supertype of all referenceable types on which comparison
+    /// (ref.eq) is allowed.
+    Eq,
+
+    /// The abstract `struct` heap type.
+    ///
+    /// The common supertype of all struct types.
+    Struct,
+
+    /// The abstract `array` heap type.
+    ///
+    /// The common supertype of all array types.
+    Array,
+
+    /// The unboxed `i31` heap type.
+    I31,
+
+    /// The abstract `exception` heap type.
     Exn,
+
+    /// The abstract `noexn` heap type.
+    NoExn,
 }
 
 impl From<wasmparser::HeapType> for HeapType {
     fn from(ty: wasmparser::HeapType) -> Self {
         match ty {
-            wasmparser::HeapType::Any => Self::Any,
-            wasmparser::HeapType::Func => Self::Func,
-            wasmparser::HeapType::Extern => Self::Extern,
-            wasmparser::HeapType::Eq => Self::Eq,
-            wasmparser::HeapType::I31 => Self::I31,
-            wasmparser::HeapType::None => Self::None,
-            wasmparser::HeapType::NoExtern => Self::NoExtern,
-            wasmparser::HeapType::NoFunc => Self::NoFunc,
-            wasmparser::HeapType::Struct => Self::Struct,
-            wasmparser::HeapType::Array => Self::Array,
-            wasmparser::HeapType::Exn => Self::Exn,
+            wasmparser::HeapType::Abstract { shared, ty } => {
+                let ty = ty.into();
+                Self::Abstract { shared, ty }
+            },
             wasmparser::HeapType::Concrete(index) => {
                 Self::Concrete(index.as_module_index().unwrap())
             }
@@ -288,21 +346,53 @@ impl From<wasmparser::HeapType> for HeapType {
     }
 }
 
+
+impl From<wasmparser::AbstractHeapType> for AbstractHeapType {
+    fn from(ty: wasmparser::AbstractHeapType) -> Self {
+        match ty {
+            wasmparser::AbstractHeapType::Any => Self::Any,
+            wasmparser::AbstractHeapType::Func => Self::Func,
+            wasmparser::AbstractHeapType::Extern => Self::Extern,
+            wasmparser::AbstractHeapType::Eq => Self::Eq,
+            wasmparser::AbstractHeapType::I31 => Self::I31,
+            wasmparser::AbstractHeapType::None => Self::None,
+            wasmparser::AbstractHeapType::NoExtern => Self::NoExtern,
+            wasmparser::AbstractHeapType::NoFunc => Self::NoFunc,
+            wasmparser::AbstractHeapType::Struct => Self::Struct,
+            wasmparser::AbstractHeapType::Array => Self::Array,
+            wasmparser::AbstractHeapType::Exn => Self::Exn,
+            wasmparser::AbstractHeapType::NoExn => Self::NoExn,
+        }
+    }
+}
+
 impl From<HeapType> for wasm_encoder::HeapType {
     fn from(value: HeapType) -> Self {
         match value {
+            HeapType::Abstract { shared, ty } => {
+                let ty = ty.into();
+                Self::Abstract { shared, ty }
+            }
             HeapType::Concrete(index) => Self::Concrete(index),
-            HeapType::Func => Self::Func,
-            HeapType::Extern => Self::Extern,
-            HeapType::Any => Self::Any,
-            HeapType::None => Self::None,
-            HeapType::NoExtern => Self::NoExtern,
-            HeapType::NoFunc => Self::NoFunc,
-            HeapType::Eq => Self::Eq,
-            HeapType::Struct => Self::Struct,
-            HeapType::Array => Self::Array,
-            HeapType::I31 => Self::I31,
-            HeapType::Exn => Self::Exn,
+        }
+    }
+}
+
+impl From<AbstractHeapType> for wasm_encoder::AbstractHeapType {
+    fn from(value: AbstractHeapType) -> Self {
+        match value {
+            AbstractHeapType::Func => Self::Func,
+            AbstractHeapType::Extern => Self::Extern,
+            AbstractHeapType::Any => Self::Any,
+            AbstractHeapType::None => Self::None,
+            AbstractHeapType::NoExtern => Self::NoExtern,
+            AbstractHeapType::NoFunc => Self::NoFunc,
+            AbstractHeapType::Eq => Self::Eq,
+            AbstractHeapType::Struct => Self::Struct,
+            AbstractHeapType::Array => Self::Array,
+            AbstractHeapType::I31 => Self::I31,
+            AbstractHeapType::Exn => Self::Exn,
+            AbstractHeapType::NoExn => Self::NoExn,
         }
     }
 }

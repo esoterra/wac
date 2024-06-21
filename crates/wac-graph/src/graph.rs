@@ -1225,10 +1225,7 @@ impl CompositionGraph {
         let bytes = CompositionGraphEncoder::new(self).encode(options)?;
 
         if options.validate {
-            Validator::new_with_features(WasmFeatures {
-                component_model: true,
-                ..Default::default()
-            })
+            Validator::new_with_features(WasmFeatures::COMPONENT_MODEL)
             .validate_all(&bytes)
             .map_err(|e| EncodeError::ValidationFailure { source: e })?;
         }

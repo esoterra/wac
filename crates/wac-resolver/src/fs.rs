@@ -31,7 +31,7 @@ impl FileSystemPackageResolver {
         &self,
         keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
     ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
-        let mut packages = IndexMap::new();
+        let mut packages_map = IndexMap::new();
         for (key, span) in keys.iter() {
             let path = match self.overrides.get(key.name) {
                 Some(path) if key.version.is_none() => {
@@ -86,34 +86,41 @@ impl FileSystemPackageResolver {
                     source: e,
                 };
                 let mut resolve = wit_parser::Resolve::new();
-                let pkg = if path.is_dir() {
+                let packages = if path.is_dir() {
                     log::debug!(
                         "loading WIT package from directory `{path}`",
                         path = path.display()
                     );
 
-                    let (pkg, _) = resolve.push_dir(&path).map_err(pkg_res_failure)?;
-                    Some(pkg)
+                    let (packages, _) = resolve.push_dir(&path).map_err(pkg_res_failure)?;
+                    Some(packages)
                 } else if path.extension().and_then(std::ffi::OsStr::to_str) == Some("wit") {
-                    let unresolved = wit_parser::UnresolvedPackage::parse_file(&path)
+                    let unresolved_group = wit_parser::UnresolvedPackageGroup::parse_file(&path)
                         .map_err(pkg_res_failure)?;
-                    let pkg = resolve.push(unresolved).map_err(pkg_res_failure)?;
-                    Some(pkg)
+                    let source_map = unresolved_group.source_map;
+                    let mut packages = Vec::new();
+                    for unresolved in unresolved_group.packages.into_iter() {
+                        let pkg = resolve.push(unresolved, &source_map).map_err(pkg_res_failure)?;
+                        packages.push(pkg);
+                    }
+                    Some(packages)
                 } else {
                     None
                 };
-                if let Some(pkg) = pkg {
-                    packages.insert(
-                        *key,
-                        wit_component::encode(Some(true), &resolve, pkg)
-                            .with_context(|| {
-                                format!(
-                                    "failed to encode WIT package from `{path}`",
-                                    path = path.display()
-                                )
-                            })
-                            .map_err(pkg_res_failure)?,
-                    );
+                if let Some(packages) = packages {
+                    for pkg in packages {
+                        packages_map.insert(
+                            *key,
+                            wit_component::encode(Some(true), &resolve, pkg)
+                                .with_context(|| {
+                                    format!(
+                                        "failed to encode WIT package from `{path}`",
+                                        path = path.display()
+                                    )
+                                })
+                                .map_err(pkg_res_failure)?,
+                        );
+                    }
 
                     continue;
                 }
@@ -160,14 +167,14 @@ impl FileSystemPackageResolver {
                     }
                 };
 
-                packages.insert(*key, bytes);
+                packages_map.insert(*key, bytes);
                 continue;
             }
 
-            packages.insert(*key, bytes);
+            packages_map.insert(*key, bytes);
         }
 
-        Ok(packages)
+        Ok(packages_map)
     }
 }
 

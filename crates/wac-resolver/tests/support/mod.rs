@@ -9,7 +9,7 @@ use warg_client::{
 use warg_crypto::signing::PrivateKey;
 use warg_protocol::{operator::NamespaceState, registry::PackageName};
 use warg_server::{policy::content::WasmContentPolicy, Config, Server};
-use wit_parser::{Resolve, UnresolvedPackage};
+use wit_parser::{Resolve, UnresolvedPackage, UnresolvedPackageGroup};
 
 pub fn test_operator_key() -> &'static str {
     "ecdsa-p256:I+UlDo0HxyBBFeelhPPWmD+LnklOpqZDkrFP5VduASk="
@@ -46,7 +46,7 @@ pub async fn publish_wit(
     let mut resolve = Resolve::new();
     let pkg = resolve
         .push(
-            UnresolvedPackage::parse(Path::new("foo.wit"), wit)
+            UnresolvedPackageGroup::parse(Path::new("foo.wit"), wit)
                 .context("failed to parse wit for publishing")?,
         )
         .context("failed to resolve wit for publishing")?;

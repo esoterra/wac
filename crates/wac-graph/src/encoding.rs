@@ -476,25 +476,30 @@ impl<'a> TypeEncoder<'a> {
                 element_type,
                 initial,
                 maximum,
+                table64,
             } => EntityType::Table(TableType {
                 element_type: (*element_type).into(),
                 minimum: *initial,
                 maximum: *maximum,
+                table64: *table64,
             }),
             CoreExtern::Memory {
                 memory64,
                 shared,
                 initial,
                 maximum,
+                page_size_log2,
             } => EntityType::Memory(MemoryType {
                 minimum: *initial,
                 maximum: *maximum,
                 memory64: *memory64,
                 shared: *shared,
+                page_size_log2: *page_size_log2,
             }),
-            CoreExtern::Global { val_type, mutable } => EntityType::Global(GlobalType {
+            CoreExtern::Global { val_type, mutable, shared } => EntityType::Global(GlobalType {
                 val_type: (*val_type).into(),
                 mutable: *mutable,
+                shared: *shared,
             }),
             CoreExtern::Tag(func) => {
                 let index = encodable.type_count();

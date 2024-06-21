@@ -422,11 +422,13 @@ impl<'a> SubtypeChecker<'a> {
                     element_type: ae,
                     initial: ai,
                     maximum: am,
+                    table64: atab,
                 },
                 CoreExtern::Table {
                     element_type: be,
                     initial: bi,
                     maximum: bm,
+                    table64: btab,
                 },
             ) => {
                 if ae != be {
@@ -446,12 +448,14 @@ impl<'a> SubtypeChecker<'a> {
                     shared: ashared,
                     initial: ai,
                     maximum: am,
+                    page_size_log2: aps,
                 },
                 CoreExtern::Memory {
                     memory64: b64,
                     shared: bshared,
                     initial: bi,
                     maximum: bm,
+                    page_size_log2: bps,
                 },
             ) => {
                 if ashared != bshared {
@@ -472,10 +476,12 @@ impl<'a> SubtypeChecker<'a> {
                 CoreExtern::Global {
                     val_type: avt,
                     mutable: am,
+                    shared: ash,
                 },
                 CoreExtern::Global {
                     val_type: bvt,
                     mutable: bm,
+                    shared: bsh,
                 },
             ) => {
                 if am != bm {

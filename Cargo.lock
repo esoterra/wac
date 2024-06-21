@@ -30,6 +30,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.8.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
+dependencies = [
+ "cfg-if",
+ "once_cell",
+ "version_check",
+ "zerocopy",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1270,6 +1282,10 @@ name = "hashbrown"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
+dependencies = [
+ "ahash",
+ "serde 1.0.197",
+]
 
 [[package]]
 name = "heck"
@@ -3848,7 +3864,7 @@ dependencies = [
  "wac-types",
  "warg-client",
  "warg-protocol",
- "wasmprinter 0.202.0",
+ "wasmprinter 0.211.1",
  "wat",
 ]
 
@@ -3867,10 +3883,10 @@ dependencies = [
  "serde_json",
  "thiserror",
  "wac-types",
- "wasm-encoder 0.202.0",
+ "wasm-encoder 0.211.1",
  "wasm-metadata",
- "wasmparser 0.202.0",
- "wasmprinter 0.202.0",
+ "wasmparser 0.211.1",
+ "wasmprinter 0.211.1",
  "wat",
  "wit-component",
  "wit-parser",
@@ -3897,10 +3913,10 @@ dependencies = [
  "tokio",
  "wac-graph",
  "wac-resolver",
- "wasm-encoder 0.202.0",
+ "wasm-encoder 0.211.1",
  "wasm-metadata",
- "wasmparser 0.202.0",
- "wasmprinter 0.202.0",
+ "wasmparser 0.211.1",
+ "wasmprinter 0.211.1",
 ]
 
 [[package]]
@@ -3925,7 +3941,7 @@ dependencies = [
  "warg-crypto",
  "warg-protocol",
  "warg-server",
- "wasmprinter 0.202.0",
+ "wasmprinter 0.211.1",
  "wat",
  "wit-component",
  "wit-parser",
@@ -3940,8 +3956,8 @@ dependencies = [
  "indexmap 2.2.6",
  "semver",
  "serde 1.0.197",
- "wasm-encoder 0.202.0",
- "wasmparser 0.202.0",
+ "wasm-encoder 0.211.1",
+ "wasmparser 0.211.1",
 ]
 
 [[package]]
@@ -4243,18 +4259,19 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
-version = "0.202.0"
+version = "0.211.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfd106365a7f5f7aa3c1916a98cbb3ad477f5ff96ddb130285a91c6e7429e67a"
+checksum = "5e7d931a1120ef357f32b74547646b6fa68ea25e377772b72874b131a9ed70d4"
 dependencies = [
  "leb128",
+ "wasmparser 0.211.1",
 ]
 
 [[package]]
 name = "wasm-metadata"
-version = "0.202.0"
+version = "0.211.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "094aea3cb90e09f16ee25a4c0e324b3e8c934e7fd838bfa039aef5352f44a917"
+checksum = "7f56bad1c68558c44e7f60be865117dc9d8c3a066bcf3b2232cb9a9858965fd5"
 dependencies = [
  "anyhow",
  "indexmap 2.2.6",
@@ -4262,8 +4279,8 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "spdx",
- "wasm-encoder 0.202.0",
- "wasmparser 0.202.0",
+ "wasm-encoder 0.211.1",
+ "wasmparser 0.211.1",
 ]
 
 [[package]]
@@ -4292,13 +4309,16 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.202.0"
+version = "0.211.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6998515d3cf3f8b980ef7c11b29a9b1017d4cf86b99ae93b546992df9931413"
+checksum = "3189cc8a91f547390e2f043ca3b3e3fe0892f7d581767fd4e4b7f3dc3fe8e561"
 dependencies = [
+ "ahash",
  "bitflags 2.5.0",
+ "hashbrown 0.14.3",
  "indexmap 2.2.6",
  "semver",
+ "serde 1.0.197",
 ]
 
 [[package]]
@@ -4313,32 +4333,33 @@ dependencies = [
 
 [[package]]
 name = "wasmprinter"
-version = "0.202.0"
+version = "0.211.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab1cc9508685eef9502e787f4d4123745f5651a1e29aec047645d3cac1e2da7a"
+checksum = "23708dd7a986bd9b12fca26eff525bbc3659a336e947fd9ed9fdf79086825aec"
 dependencies = [
  "anyhow",
- "wasmparser 0.202.0",
+ "termcolor",
+ "wasmparser 0.211.1",
 ]
 
 [[package]]
 name = "wast"
-version = "202.0.0"
+version = "211.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fbcb11204515c953c9b42ede0a46a1c5e17f82af05c4fae201a8efff1b0f4fe"
+checksum = "b25506dd82d00da6b14a87436b3d52b1d264083fa79cdb72a0d1b04a8595ccaa"
 dependencies = [
  "bumpalo",
  "leb128",
  "memchr",
  "unicode-width",
- "wasm-encoder 0.202.0",
+ "wasm-encoder 0.211.1",
 ]
 
 [[package]]
 name = "wat"
-version = "1.202.0"
+version = "1.211.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4de4b15a47135c56a3573406e9977b9518787a6154459b4842a9b9d3d1684848"
+checksum = "eb716ca6c86eecac2d82541ffc39860118fc0af9309c4f2670637bea2e1bdd7d"
 dependencies = [
  "wast",
 ]
@@ -4567,9 +4588,9 @@ dependencies = [
 
 [[package]]
 name = "wit-component"
-version = "0.202.0"
+version = "0.211.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c836b1fd9932de0431c1758d8be08212071b6bba0151f7bac826dbc4312a2a9"
+checksum = "079a38b7d679867424bf2bcbdd553a2acf364525307e43dfb910fa4a2c6fd9f2"
 dependencies = [
  "anyhow",
  "bitflags 2.5.0",
@@ -4578,18 +4599,18 @@ dependencies = [
  "serde 1.0.197",
  "serde_derive",
  "serde_json",
- "wasm-encoder 0.202.0",
+ "wasm-encoder 0.211.1",
  "wasm-metadata",
- "wasmparser 0.202.0",
+ "wasmparser 0.211.1",
  "wat",
  "wit-parser",
 ]
 
 [[package]]
 name = "wit-parser"
-version = "0.202.0"
+version = "0.211.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "744237b488352f4f27bca05a10acb79474415951c450e52ebd0da784c1df2bcc"
+checksum = "a3cc90c50c7ec8a824b5d2cddddff13b2dc12b7a96bf8684d11474223c2ea22f"
 dependencies = [
  "anyhow",
  "id-arena",
@@ -4600,7 +4621,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "unicode-xid",
- "wasmparser 0.202.0",
+ "wasmparser 0.211.1",
 ]
 
 [[package]]
@@ -4692,6 +4713,26 @@ dependencies = [
  "serde 1.0.197",
  "static_assertions",
  "zvariant",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.7.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae87e3fcd617500e5d106f0380cf7b77f3c6092aae37191433159dda23cfb087"
+dependencies = [
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.7.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15e934569e47891f7d9411f1a451d947a60e000ab3bd24fbb970f000387d1b3b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.57",
 ]
 
 [[package]]
